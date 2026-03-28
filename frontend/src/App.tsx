@@ -5,13 +5,17 @@ import { StructuredOutput } from "./components/StructuredOutput";
 import { getCase, getCases, getGuidelines, postCase, postGenerate } from "./lib/api";
 import * as local from "./lib/persistence";
 import { normalizeStructured } from "./lib/structuredDefaults";
+import { deserializeOriginalNote, serializeOriginalNote } from "./lib/originalNoteFormat";
 import type { GuidelinePreset, StructuredClinicalOutput, TokenUsage } from "./types";
 
 export default function App() {
-  const [note, setNote] = useState("");
+  const [erNote, setErNote] = useState("");
+  const [hpNote, setHpNote] = useState("");
+  const [otherNote, setOtherNote] = useState("");
   const [guidelineKey, setGuidelineKey] = useState("");
   const [guideline, setGuideline] = useState("");
   const [referencePattern, setReferencePattern] = useState("");
+  const [exemplarRevisedHpi, setExemplarRevisedHpi] = useState("");
   const [guidelinePresets, setGuidelinePresets] = useState<GuidelinePreset[]>([]);
   const [structured, setStructured] = useState<StructuredClinicalOutput | null>(null);
   const [meta, setMeta] = useState<{
@@ -64,10 +68,13 @@ export default function App() {
     setEditedKeys(new Set());
     try {
       const res = await postGenerate({
-        note_text: note,
+        er_note: erNote.trim() || null,
+        hp_note: hpNote.trim() || null,
+        note_text: otherNote.trim() || "",
         guideline_key: guidelineKey || null,
         guideline_text: guideline || null,
         reference_pattern_text: referencePattern || null,
+        exemplar_revised_hpi: exemplarRevisedHpi.trim() || null,
       });
       setStructured(normalizeStructured(res.structured));
       setMeta({ prompt_version: res.prompt_version, model: res.model, usage: res.usage });
@@ -82,10 +89,12 @@ export default function App() {
     if (!structured) return;
     setError(null);
     try {
+      const original_note = serializeOriginalNote(erNote, hpNote, otherNote);
+      const titleSeed = erNote.trim() || hpNote.trim() || otherNote.trim() || "Case";
       const saved = await postCase({
         id: caseId,
-        title: note.slice(0, 80) || "Case",
-        original_note: note,
+        title: titleSeed.slice(0, 80),
+        original_note,
         structured_output: structured,
         source: editedKeys.size ? "user" : "machine",
       });
@@ -102,7 +111,10 @@ export default function App() {
     try {
       const c = await getCase(id);
       setCaseId(c.id);
-      setNote(c.original_note);
+      const parsed = deserializeOriginalNote(c.original_note);
+      setErNote(parsed.er);
+      setHpNote(parsed.hp);
+      setOtherNote(parsed.other);
       setStructured(normalizeStructured(c.structured_output));
       setEditedKeys(new Set());
       setMeta(null);
@@ -110,7 +122,10 @@ export default function App() {
       const loc = local.getLocalCase(id);
       if (loc) {
         setCaseId(loc.id);
-        setNote(loc.original_note);
+        const p = deserializeOriginalNote(loc.original_note);
+        setErNote(p.er);
+        setHpNote(p.hp);
+        setOtherNote(p.other);
         setStructured(normalizeStructured(loc.structured_output));
         setEditedKeys(new Set());
         setMeta(null);
@@ -120,7 +135,9 @@ export default function App() {
 
   const newCase = () => {
     setCaseId(null);
-    setNote("");
+    setErNote("");
+    setHpNote("");
+    setOtherNote("");
     setStructured(null);
     setMeta(null);
     setEditedKeys(new Set());
@@ -163,8 +180,12 @@ export default function App() {
             </label>
           </div>
           <NoteEditor
-            value={note}
-            onChange={setNote}
+            erNote={erNote}
+            onErNoteChange={setErNote}
+            hpNote={hpNote}
+            onHpNoteChange={setHpNote}
+            otherNote={otherNote}
+            onOtherNoteChange={setOtherNote}
             onGenerate={handleGenerate}
             guidelinePresets={guidelinePresets}
             guidelineKey={guidelineKey}
@@ -173,6 +194,8 @@ export default function App() {
             onGuidelineChange={setGuideline}
             referencePatternText={referencePattern}
             onReferencePatternChange={setReferencePattern}
+            exemplarRevisedHpi={exemplarRevisedHpi}
+            onExemplarRevisedHpiChange={setExemplarRevisedHpi}
             busy={busy}
           />
         </section>

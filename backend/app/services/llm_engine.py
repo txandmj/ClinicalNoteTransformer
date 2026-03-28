@@ -102,9 +102,12 @@ def generate_structured(
     system_text = build_system_prompt()
     system_param = build_system_param(system_text, use_cache)
     user_blocks = build_user_content_blocks(
+        req.er_note,
+        req.hp_note,
         req.note_text,
         guideline_merged,
         req.reference_pattern_text,
+        req.exemplar_revised_hpi,
         use_cache,
     )
 
