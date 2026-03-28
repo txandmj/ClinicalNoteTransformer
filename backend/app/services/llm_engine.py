@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from anthropic import Anthropic
+from anthropic.types import TextBlock
 
 from app.core.config import Settings
 from app.prompts.config import PROMPT_VERSION
@@ -18,7 +19,22 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     fence = re.match(r"^```(?:json)?\s*([\s\S]*?)```\s*$", text)
     if fence:
         text = fence.group(1).strip()
-    return json.loads(text)
+    try:
+        parsed: Any = json.loads(text)
+    except json.JSONDecodeError as e:
+        snippet = text[:500] + ("…" if len(text) >500 else "")
+        raise ValueError(f"Model output was not valid JSON: {e}; snippet: {snippet!r}") from e
+    if not isinstance(parsed, dict):
+        raise ValueError("Model JSON must be an object at the top level")
+    return parsed
+
+
+def _coerce_str_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        return [str(value)]
+    return [str(item) for item in value]
 
 
 def _parse_structured(data: dict[str, Any]) -> StructuredClinicalOutput:
@@ -30,10 +46,10 @@ def _parse_structured(data: dict[str, Any]) -> StructuredClinicalOutput:
     return StructuredClinicalOutput(
         chief_complaint=str(data.get("chief_complaint") or ""),
         hpi_summary=str(data.get("hpi_summary") or ""),
-        key_findings=list(data.get("key_findings") or []),
-        suspected_conditions=list(data.get("suspected_conditions") or []),
+        key_findings=_coerce_str_list(data.get("key_findings")),
+        suspected_conditions=_coerce_str_list(data.get("suspected_conditions")),
         disposition_recommendation=disp,
-        uncertainties=list(data.get("uncertainties") or []),
+        uncertainties=_coerce_str_list(data.get("uncertainties")),
         revised_hpi=str(data.get("revised_hpi") or ""),
     )
 
@@ -52,7 +68,10 @@ def generate_structured(req: GenerateRequest, settings: Settings) -> GenerateRes
         system=system,
         messages=[{"role": "user", "content": user}],
     )
-    text_blocks = [b.text for b in message.content if b.type == "text"]
+    text_blocks: list[str] = []
+    for block in message.content:
+        if isinstance(block, TextBlock):
+            text_blocks.append(block.text)
     raw = "".join(text_blocks).strip()
 
     data = _extract_json_object(raw)

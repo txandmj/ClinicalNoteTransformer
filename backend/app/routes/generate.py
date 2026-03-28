@@ -1,3 +1,4 @@
+from anthropic import AuthenticationError
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import Settings, get_settings
@@ -18,5 +19,14 @@ def post_generate(
         return generate_structured(body, settings)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Anthropic rejected the API key (invalid or missing). "
+                "Put ANTHROPIC_API_KEY=sk-ant-api03-... in backend/.env (one line, no quotes). "
+                "Create or rotate a key at https://console.anthropic.com/ then restart uvicorn."
+            ),
+        ) from e
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Generation failed: {e!s}") from e
