@@ -20,7 +20,8 @@ Additional rubric fields (still required):
 
 ## Rules
 
-- Ground every statement in the **source note**. If something is not stated, list it under `uncertainties`.
+- Ground every statement in the **current case** source material (labeled ER, H&P, and/or additional notes). If something is not stated, list it under `uncertainties`.
+- If an **exemplar revised HPI** section appears above the current case, it is **teaching material only** — never import its patient-specific facts into your JSON.
 - The **Clean revised HPI** and `disposition_recommendation` must be logically consistent.
 - `sentence_comparisons.length` should match the number of sentences (or clusters) you use in `revised_hpi` (typically one comparison row per sentence, in order). `sentence_index` is 1-based in document order.
 - Think step-by-step internally, then emit **only** the final JSON object (no markdown fences).

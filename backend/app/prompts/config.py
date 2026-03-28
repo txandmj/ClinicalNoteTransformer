@@ -26,4 +26,5 @@ _DEFAULT_COT_FALLBACK = """You are a clinical documentation assistant. Follow th
    uncertainties, revised_hpi (clean revised HPI), sentence_comparisons (array of
    {sentence_index, revised, source, reason}).
 3. revised_hpi disposition must be consistent with disposition_recommendation.
+4. If an exemplar revised HPI is provided, use it for style/reasoning only; never copy its patient facts.
 """

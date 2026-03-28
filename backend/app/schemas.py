@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Disposition(str, Enum):
@@ -14,7 +14,12 @@ class Disposition(str, Enum):
 class GenerateRequest(BaseModel):
     """Input for POST /generate."""
 
-    note_text: str = Field(..., min_length=1, description="Unstructured clinical note(s)")
+    er_note: str | None = Field(None, description="Original emergency department note")
+    hp_note: str | None = Field(None, description="Original history & physical note")
+    note_text: str = Field(
+        default="",
+        description="Optional combined or overflow note text (use if ER/H&P not split)",
+    )
     guideline_key: str | None = Field(
         None,
         description="Bundled preset id (see GET /guidelines), e.g. MCG_ISC_DIABETES",
@@ -24,8 +29,22 @@ class GenerateRequest(BaseModel):
         description="Extra MCG-style text; merged after preset body when guideline_key is set",
     )
     reference_pattern_text: str | None = Field(
-        None, description="Optional distilled pattern from a reference case"
+        None, description="Optional distilled bullets / rubric from a reference case"
     )
+    exemplar_revised_hpi: str | None = Field(
+        None,
+        description=(
+            "Human revised HPI from a reference (Case A) — pattern, tone, and reasoning only; "
+            "must not be treated as facts for the current patient"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def require_some_clinical_source(self) -> Self:
+        chunks = [self.er_note or "", self.hp_note or "", self.note_text or ""]
+        if not any(c.strip() for c in chunks):
+            raise ValueError("Provide at least one of: er_note, hp_note, or note_text with content")
+        return self
 
 
 class GuidelinePreset(BaseModel):
