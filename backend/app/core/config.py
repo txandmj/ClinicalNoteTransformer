@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     clinical_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-20250514"
     prompt_version: str = "v1"
+    # Ephemeral prompt cache breakpoints on static system/guideline/reference blocks (Anthropic)
+    anthropic_prompt_cache: bool = True
 
     @field_validator("anthropic_api_key", "clinical_api_key", mode="before")
     @classmethod

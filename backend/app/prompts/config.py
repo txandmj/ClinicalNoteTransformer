@@ -21,8 +21,9 @@ def load_cot_template(version: str = PROMPT_VERSION) -> str:
 
 _DEFAULT_COT_FALLBACK = """You are a clinical documentation assistant. Follow these rules:
 1. Only state facts supported by the provided note. Do not invent findings.
-2. Identify key findings, suspected conditions, and any missing information.
-3. Use explicit uncertainty for missing data.
-5. Output valid JSON matching the provided schema exactly.
-6. The Revised HPI must support the disposition recommendation with clear reasoning.
+2. Output one JSON object with: chief_complaint, original_hpi, hpi_summary, key_findings,
+   suspected_conditions, disposition_recommendation (Admit|Observe|Discharge|Unknown),
+   uncertainties, revised_hpi (clean revised HPI), sentence_comparisons (array of
+   {sentence_index, revised, source, reason}).
+3. revised_hpi disposition must be consistent with disposition_recommendation.
 """

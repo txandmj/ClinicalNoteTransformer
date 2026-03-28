@@ -1,9 +1,13 @@
 import type { FormEvent } from "react";
+import type { GuidelinePreset } from "../../types";
 
 type Props = {
   value: string;
   onChange: (v: string) => void;
   onGenerate: () => void;
+  guidelinePresets: GuidelinePreset[];
+  guidelineKey: string;
+  onGuidelineKeyChange: (v: string) => void;
   guidelineText: string;
   onGuidelineChange: (v: string) => void;
   referencePatternText: string;
@@ -15,6 +19,9 @@ export function NoteEditor({
   value,
   onChange,
   onGenerate,
+  guidelinePresets,
+  guidelineKey,
+  onGuidelineKeyChange,
   guidelineText,
   onGuidelineChange,
   referencePatternText,
@@ -39,7 +46,24 @@ export function NoteEditor({
         />
       </label>
       <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span>Admission guideline (optional)</span>
+        <span>Guideline preset (bundled MCG-style text, token-cache friendly)</span>
+        <select
+          value={guidelineKey}
+          onChange={(e) => onGuidelineKeyChange(e.target.value)}
+          style={{ padding: 8, borderRadius: 8, border: "1px solid #ccc", maxWidth: "100%" }}
+        >
+          <option value="">None — paste only below</option>
+          {guidelinePresets.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title} ({p.id})
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span>
+          Extra admission guideline text (optional; appended after preset — still combined for caching)
+        </span>
         <textarea
           value={guidelineText}
           onChange={(e) => onGuidelineChange(e.target.value)}

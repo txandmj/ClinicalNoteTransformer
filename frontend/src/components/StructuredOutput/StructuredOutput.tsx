@@ -1,12 +1,12 @@
 import { EditableFields } from "../EditableFields";
-import type { StructuredClinicalOutput } from "../../types";
+import type { StructuredClinicalOutput, TokenUsage } from "../../types";
 
 type Props = {
   structured: StructuredClinicalOutput | null;
   onStructuredChange: (next: StructuredClinicalOutput) => void;
   editedKeys: Set<string>;
   onFieldEdit: (fieldKey: string) => void;
-  meta: { prompt_version?: string; model?: string } | null;
+  meta: { prompt_version?: string; model?: string; usage?: TokenUsage | null } | null;
 };
 
 export function StructuredOutput({
@@ -29,6 +29,18 @@ export function StructuredOutput({
       {meta && (
         <p style={{ margin: "0 0 12px", fontSize: 13, color: "#6b7280" }}>
           Model: {meta.model ?? "—"} · Prompt: {meta.prompt_version ?? "—"}
+          {meta.usage && (
+            <>
+              {" "}
+              · In: {meta.usage.input_tokens ?? "—"} · Out: {meta.usage.output_tokens ?? "—"}
+              {(meta.usage.cache_read_input_tokens ?? 0) > 0 && (
+                <> · Cache read: {meta.usage.cache_read_input_tokens}</>
+              )}
+              {(meta.usage.cache_creation_input_tokens ?? 0) > 0 && (
+                <> · Cache write: {meta.usage.cache_creation_input_tokens}</>
+              )}
+            </>
+          )}
         </p>
       )}
       <EditableFields

@@ -2,16 +2,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CaseList } from "./components/CaseList";
 import { NoteEditor } from "./components/NoteEditor";
 import { StructuredOutput } from "./components/StructuredOutput";
-import { getCase, getCases, postCase, postGenerate } from "./lib/api";
+import { getCase, getCases, getGuidelines, postCase, postGenerate } from "./lib/api";
 import * as local from "./lib/persistence";
-import type { StructuredClinicalOutput } from "./types";
+import { normalizeStructured } from "./lib/structuredDefaults";
+import type { GuidelinePreset, StructuredClinicalOutput, TokenUsage } from "./types";
 
 export default function App() {
   const [note, setNote] = useState("");
+  const [guidelineKey, setGuidelineKey] = useState("");
   const [guideline, setGuideline] = useState("");
   const [referencePattern, setReferencePattern] = useState("");
+  const [guidelinePresets, setGuidelinePresets] = useState<GuidelinePreset[]>([]);
   const [structured, setStructured] = useState<StructuredClinicalOutput | null>(null);
-  const [meta, setMeta] = useState<{ prompt_version?: string; model?: string } | null>(null);
+  const [meta, setMeta] = useState<{
+    prompt_version?: string;
+    model?: string;
+    usage?: TokenUsage | null;
+  } | null>(null);
   const [editedKeys, setEditedKeys] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +44,16 @@ export default function App() {
     void refreshList();
   }, [refreshList]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        setGuidelinePresets(await getGuidelines());
+      } catch {
+        /* offline */
+      }
+    })();
+  }, []);
+
   const onFieldEdit = useCallback((key: string) => {
     setEditedKeys((prev) => new Set(prev).add(key));
   }, []);
@@ -48,11 +65,12 @@ export default function App() {
     try {
       const res = await postGenerate({
         note_text: note,
+        guideline_key: guidelineKey || null,
         guideline_text: guideline || null,
         reference_pattern_text: referencePattern || null,
       });
-      setStructured(res.structured);
-      setMeta({ prompt_version: res.prompt_version, model: res.model });
+      setStructured(normalizeStructured(res.structured));
+      setMeta({ prompt_version: res.prompt_version, model: res.model, usage: res.usage });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -85,7 +103,7 @@ export default function App() {
       const c = await getCase(id);
       setCaseId(c.id);
       setNote(c.original_note);
-      setStructured(c.structured_output);
+      setStructured(normalizeStructured(c.structured_output));
       setEditedKeys(new Set());
       setMeta(null);
     } catch {
@@ -93,7 +111,7 @@ export default function App() {
       if (loc) {
         setCaseId(loc.id);
         setNote(loc.original_note);
-        setStructured(loc.structured_output);
+        setStructured(normalizeStructured(loc.structured_output));
         setEditedKeys(new Set());
         setMeta(null);
       } else setError("Case not found");
@@ -148,6 +166,9 @@ export default function App() {
             value={note}
             onChange={setNote}
             onGenerate={handleGenerate}
+            guidelinePresets={guidelinePresets}
+            guidelineKey={guidelineKey}
+            onGuidelineKeyChange={setGuidelineKey}
             guidelineText={guideline}
             onGuidelineChange={setGuideline}
             referencePatternText={referencePattern}

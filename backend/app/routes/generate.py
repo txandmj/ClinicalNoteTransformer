@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.config import Settings, get_settings
 from app.deps import verify_api_key
 from app.schemas import GenerateRequest, GenerateResponse
+from app.services.guideline_presets import GuidelinePresetError, merge_guideline_for_request
 from app.services.llm_engine import generate_structured
 
 router = APIRouter(prefix="/generate", tags=["generate"])
@@ -16,7 +17,10 @@ def post_generate(
     settings: Settings = Depends(get_settings),
 ) -> GenerateResponse:
     try:
-        return generate_structured(body, settings)
+        merged = merge_guideline_for_request(body.guideline_key, body.guideline_text)
+        return generate_structured(body, settings, merged)
+    except GuidelinePresetError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except AuthenticationError as e:
