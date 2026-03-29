@@ -7,6 +7,7 @@ type Props = {
   editedKeys: Set<string>;
   onFieldEdit: (fieldKey: string) => void;
   meta: { prompt_version?: string; model?: string; usage?: TokenUsage | null } | null;
+  revisedHpiBaseline: string;
 };
 
 export function StructuredOutput({
@@ -15,6 +16,7 @@ export function StructuredOutput({
   editedKeys,
   onFieldEdit,
   meta,
+  revisedHpiBaseline,
 }: Props) {
   if (!structured) {
     return (
@@ -48,6 +50,7 @@ export function StructuredOutput({
         onChange={onStructuredChange}
         editedKeys={editedKeys}
         onFieldEdit={onFieldEdit}
+        revisedHpiBaseline={revisedHpiBaseline}
       />
     </div>
   );

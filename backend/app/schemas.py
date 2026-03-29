@@ -113,6 +113,13 @@ class CaseCreate(BaseModel):
     original_note: str = ""
     structured_output: StructuredClinicalOutput
     source: str = Field("user", description="'machine' | 'user' — who last authored structured_output")
+    revised_hpi_baseline: str | None = Field(
+        None,
+        description=(
+            "Clean revised HPI text before human edits (e.g. last model output). "
+            "Stored so UI can show add/remove highlights vs structured_output.revised_hpi."
+        ),
+    )
 
 
 class CaseRecord(BaseModel):
@@ -121,6 +128,7 @@ class CaseRecord(BaseModel):
     original_note: str = ""
     structured_output: StructuredClinicalOutput
     source: str = "user"
+    revised_hpi_baseline: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
 
