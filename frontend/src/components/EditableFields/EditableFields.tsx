@@ -1,4 +1,5 @@
 import type { Disposition, SentenceComparisonItem, StructuredClinicalOutput } from "../../types";
+import { HpiWordDiff } from "./HpiWordDiff";
 import { RevisedHpiPreview } from "./RevisedHpiPreview";
 
 type ScalarKey = Exclude<
@@ -17,9 +18,11 @@ type Props = {
   onChange: (next: StructuredClinicalOutput) => void;
   editedKeys: Set<string>;
   onFieldEdit: (fieldKey: string) => void;
+  /** Clean revised HPI before human edits (post-generate or post-load/save). */
+  revisedHpiBaseline: string;
 };
 
-export function EditableFields({ value, onChange, editedKeys, onFieldEdit }: Props) {
+export function EditableFields({ value, onChange, editedKeys, onFieldEdit, revisedHpiBaseline }: Props) {
   function setScalar<K extends ScalarKey>(key: K, v: StructuredClinicalOutput[K]) {
     onFieldEdit(key);
     onChange({ ...value, [key]: v });
@@ -91,7 +94,13 @@ export function EditableFields({ value, onChange, editedKeys, onFieldEdit }: Pro
             )}
           </label>
           {key === "revised_hpi" ? (
-            <RevisedHpiPreview revisedHpi={value.revised_hpi} comparisons={value.sentence_comparisons} />
+            <>
+              <HpiWordDiff
+                baselineRevisedHpi={revisedHpiBaseline}
+                currentRevisedHpi={value.revised_hpi}
+              />
+              <RevisedHpiPreview revisedHpi={value.revised_hpi} comparisons={value.sentence_comparisons} />
+            </>
           ) : null}
         </div>
       ))}

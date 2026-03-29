@@ -17,6 +17,15 @@ def _now_iso() -> str:
 _cases: dict[str, CaseRecord] = {}
 
 
+def _baseline_persist(body: CaseCreate, existing: CaseRecord | None) -> str | None:
+    """Keep baseline from body when sent; on update allow omit to retain prior."""
+    if body.revised_hpi_baseline is not None:
+        return body.revised_hpi_baseline
+    if existing is not None:
+        return existing.revised_hpi_baseline
+    return None
+
+
 def create_case(body: CaseCreate) -> CaseRecord:
     cid = str(uuid.uuid4())
     now = _now_iso()
@@ -26,6 +35,7 @@ def create_case(body: CaseCreate) -> CaseRecord:
         original_note=body.original_note,
         structured_output=body.structured_output,
         source=body.source,
+        revised_hpi_baseline=body.revised_hpi_baseline,
         created_at=now,
         updated_at=now,
     )
@@ -44,6 +54,7 @@ def update_case(case_id: str, body: CaseCreate) -> CaseRecord | None:
         original_note=body.original_note,
         structured_output=body.structured_output,
         source=body.source,
+        revised_hpi_baseline=_baseline_persist(body, existing),
         created_at=existing.created_at,
         updated_at=now,
     )
@@ -74,6 +85,7 @@ def put_case(body: CaseCreate) -> CaseRecord:
             original_note=body.original_note,
             structured_output=body.structured_output,
             source=body.source,
+            revised_hpi_baseline=body.revised_hpi_baseline,
             created_at=now,
             updated_at=now,
         )

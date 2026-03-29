@@ -32,6 +32,8 @@ export interface SavedCase {
   structured_output: StructuredClinicalOutput;
   /** 'machine' | 'user' — last author of structured_output */
   source: string;
+  /** Saved snapshot for human-edit diff vs structured_output.revised_hpi */
+  revised_hpi_baseline?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
