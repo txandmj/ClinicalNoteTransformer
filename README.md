@@ -137,14 +137,57 @@ Update CORS in `app/main.py` and any API base URLs for non-proxy production buil
 
 ---
 
-## 8. Which AI tools were used and how
+## 8. AI assistance, prompts, attribution, and verification
 
-| Tool | Use |
-|------|-----|
-| **Anthropic Claude** (server-side, **Messages API**) | End-to-end **structured extraction** and **revised HPI** generation from the composed prompt; JSON parsed and validated in Python. |
-| **Cursor (or similar IDE assistant)** | Scaffolding, refactors, prompt drafting, and UI wiring during development — **not** a runtime dependency. |
+### Which AI-assisted tools were used
 
-**Important:** do not paste real **PHI** into third-party tools or shared prompts; use synthetic or de-identified notes for demos and development.
+| Tool | Role |
+|------|------|
+| **Anthropic Claude** (Messages API) | **Runtime** model: produces the structured JSON (including revised HPI) for each generate request. |
+| **Cursor** (IDE agent / chat) | **Development-time** help: scaffolding, refactors, debugging, prompt drafting for `cot_clinical.md`, and documentation (including this README). |
+
+Other local tooling (Python, Node, git) is standard and not AI-hosted.
+
+**PHI:** do not paste real **protected health information** into third-party assistants or cloud LLM UIs; use synthetic or de-identified vignettes only.
+
+### Prompts used for frontend scaffolding and/or text parsing
+
+Exact chat transcripts were not archived. The **kinds** of Cursor-style prompts that drove development included:
+
+- **Backend scaffold** — e.g. FastAPI app layout, `POST /generate` and case CRUD routes, Pydantic models aligned to a fixed JSON shape, and wiring to the Anthropic client.
+- **Frontend scaffold** — e.g. Vite + React + TypeScript app with a note editor, structured output panel, `fetch` helpers, and Vite proxy to the API.
+- **Feature iterations** — e.g. split ER/H&P fields, guideline presets + `GET /guidelines`, prompt caching breakpoints, hover/scroll from revised HPI to §4, human-edit diff vs a saved baseline, `.env` loading from `backend/` regardless of cwd.
+
+**Text parsing in the product** is **not** done by the IDE assistant at runtime. It is implemented in code:
+
+- **LLM output:** JSON extracted in `llm_engine.py` (strip markdown fences if present), then validated with **Pydantic** (`StructuredClinicalOutput`).
+- **Saved notes:** `original_note` serialization uses explicit markers (`---ER---`, etc.) in `frontend/src/lib/originalNoteFormat.ts` — designed and implemented in the repo, not by ad-hoc AI parsing of free text.
+
+**Clinical prompting** (what we send to Claude) lives in `prompts/templates/v1/cot_clinical.md` and the composed user blocks in `services/cot_prompt_builder.py`; those were refined through a mix of manual editing and assistant-assisted drafting.
+
+### Which parts were AI-generated
+
+- **End-user clinical output** for each run: **model-generated** by Claude from the current notes + guidance, then **post-processed** in Python (abbreviation expansion) and **validated** against schemas.
+- **Substantial portions of application source and docs** began as **AI-drafted** suggestions in Cursor (typical for new files, boilerplate, and iterative patches), then were reviewed and adjusted in the editor.
+
+### Which parts were manually implemented or modified
+
+- **Domain and safety choices** — schema fields, disposition enum, uncertainty handling rules, and what goes into bundled guidelines (`app/guidelines/`) and `registry.json`.
+- **`cot_clinical.md`** — rubric alignment, “do not copy exemplar facts,” JSON shape instructions, and grounding rules (human-owned, with assistant help for wording).
+- **`clinical_abbreviations.py`** — which abbreviations expand and how (curated list, not model-invented at runtime).
+- **Config and hardening** — `core/config.py`, optional `X-API-Key`, CORS allowlist, friendly error handling for auth failures.
+- **UX polish** — layout, labels, controlled components (e.g. disclosure panels), diff behavior, and local/backend sync for saved cases.
+- **Git history, merges, and deployment-related README sections** — human-driven.
+
+### How correctness was verified
+
+| Area | Method |
+|------|--------|
+| **API contracts** | Pydantic validation on requests and on parsed LLM JSON; FastAPI returns 4xx/5xx with clear messages when validation fails. |
+| **Types on the client** | TypeScript types mirror backend shapes; `npm run build` runs `tsc -b` before Vite build. |
+| **Generate path** | Manual runs with **synthetic** ER/H&P snippets: check JSON fields populate, disposition matches narrative, §4 row count aligns with revised HPI sentences where expected, and UI hover/diff behave. |
+| **Persistence** | Save → reload case; confirm `original_note` round-trips ER/H&P/other and structured fields match. |
+| **Automated tests** | Limited in this repo; correctness today relies on the checks above rather than a large CI test suite (see §9). |
 
 ---
 
