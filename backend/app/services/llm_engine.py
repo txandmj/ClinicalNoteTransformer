@@ -17,6 +17,7 @@ from app.schemas import (
     StructuredClinicalOutput,
     TokenUsage,
 )
+from app.services.clinical_abbreviations import expand_structured_revised_hpi_fields
 from app.services.cot_prompt_builder import (
     build_system_param,
     build_system_prompt,
@@ -124,7 +125,7 @@ def generate_structured(
     raw = "".join(text_blocks).strip()
 
     data = _extract_json_object(raw)
-    structured = _parse_structured(data)
+    structured = expand_structured_revised_hpi_fields(_parse_structured(data))
 
     usage: TokenUsage | None = None
     u = message.usage

@@ -1,4 +1,5 @@
 import type { Disposition, SentenceComparisonItem, StructuredClinicalOutput } from "../../types";
+import { RevisedHpiPreview } from "./RevisedHpiPreview";
 
 type ScalarKey = Exclude<
   keyof StructuredClinicalOutput,
@@ -64,33 +65,39 @@ export function EditableFields({ value, onChange, editedKeys, onFieldEdit }: Pro
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {SECTION_FIELDS.map(({ key, label, multiline, rows }) => (
-        <label key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontWeight: 600 }}>
-            {label}{" "}
-            {editedKeys.has(key) ? (
-              <span style={{ color: "#b45309", fontSize: 12 }}>(edited)</span>
+        <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontWeight: 600 }}>
+              {label}{" "}
+              {editedKeys.has(key) ? (
+                <span style={{ color: "#b45309", fontSize: 12 }}>(edited)</span>
+              ) : (
+                <span style={{ color: "#6b7280", fontSize: 12 }}>(machine)</span>
+              )}
+            </span>
+            {multiline ? (
+              <textarea
+                value={String(value[key] ?? "")}
+                onChange={(e) => setScalar(key, e.target.value as StructuredClinicalOutput[typeof key])}
+                rows={rows ?? 5}
+                style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #ccc" }}
+              />
             ) : (
-              <span style={{ color: "#6b7280", fontSize: 12 }}>(machine)</span>
+              <input
+                value={String(value[key] ?? "")}
+                onChange={(e) => setScalar(key, e.target.value as StructuredClinicalOutput[typeof key])}
+                style={{ padding: 8, borderRadius: 8, border: "1px solid #ccc" }}
+              />
             )}
-          </span>
-          {multiline ? (
-            <textarea
-              value={String(value[key] ?? "")}
-              onChange={(e) => setScalar(key, e.target.value as StructuredClinicalOutput[typeof key])}
-              rows={rows ?? 5}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #ccc" }}
-            />
-          ) : (
-            <input
-              value={String(value[key] ?? "")}
-              onChange={(e) => setScalar(key, e.target.value as StructuredClinicalOutput[typeof key])}
-              style={{ padding: 8, borderRadius: 8, border: "1px solid #ccc" }}
-            />
-          )}
-        </label>
+          </label>
+          {key === "revised_hpi" ? (
+            <RevisedHpiPreview revisedHpi={value.revised_hpi} comparisons={value.sentence_comparisons} />
+          ) : null}
+        </div>
       ))}
 
       <fieldset
+        id="section-sentence-comparison"
         style={{
           margin: 0,
           padding: 12,
@@ -111,13 +118,16 @@ export function EditableFields({ value, onChange, editedKeys, onFieldEdit }: Pro
         </p>
         {value.sentence_comparisons.map((row, index) => (
           <div
+            id={`sentence-compare-${index}`}
             key={index}
+            tabIndex={-1}
             style={{
               marginBottom: 12,
               padding: 10,
               background: "#fafafa",
               borderRadius: 8,
               border: "1px solid #eee",
+              scrollMarginTop: 12,
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
