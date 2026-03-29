@@ -24,6 +24,8 @@ export default function App() {
     usage?: TokenUsage | null;
   } | null>(null);
   const [editedKeys, setEditedKeys] = useState<Set<string>>(new Set());
+  /** Clean revised HPI snapshot for human-edit diff (generate / load / save). */
+  const [revisedHpiBaseline, setRevisedHpiBaseline] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,7 +78,9 @@ export default function App() {
         reference_pattern_text: referencePattern || null,
         exemplar_revised_hpi: exemplarRevisedHpi.trim() || null,
       });
-      setStructured(normalizeStructured(res.structured));
+      const normalized = normalizeStructured(res.structured);
+      setStructured(normalized);
+      setRevisedHpiBaseline(normalized.revised_hpi);
       setMeta({ prompt_version: res.prompt_version, model: res.model, usage: res.usage });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -97,10 +101,12 @@ export default function App() {
         original_note,
         structured_output: structured,
         source: editedKeys.size ? "user" : "machine",
+        revised_hpi_baseline: revisedHpiBaseline.trim() ? revisedHpiBaseline : null,
       });
       setCaseId(saved.id);
       local.upsertLocalCase(saved);
       setLocalCases(local.listLocalCases());
+      setRevisedHpiBaseline(saved.revised_hpi_baseline ?? revisedHpiBaseline);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -115,7 +121,13 @@ export default function App() {
       setErNote(parsed.er);
       setHpNote(parsed.hp);
       setOtherNote(parsed.other);
-      setStructured(normalizeStructured(c.structured_output));
+      const loaded = normalizeStructured(c.structured_output);
+      setStructured(loaded);
+      setRevisedHpiBaseline(
+        (c.revised_hpi_baseline != null && c.revised_hpi_baseline !== ""
+          ? c.revised_hpi_baseline
+          : loaded.revised_hpi) ?? ""
+      );
       setEditedKeys(new Set());
       setMeta(null);
     } catch {
@@ -126,7 +138,13 @@ export default function App() {
         setErNote(p.er);
         setHpNote(p.hp);
         setOtherNote(p.other);
-        setStructured(normalizeStructured(loc.structured_output));
+        const locNorm = normalizeStructured(loc.structured_output);
+        setStructured(locNorm);
+        setRevisedHpiBaseline(
+          (loc.revised_hpi_baseline != null && loc.revised_hpi_baseline !== ""
+            ? loc.revised_hpi_baseline
+            : locNorm.revised_hpi) ?? ""
+        );
         setEditedKeys(new Set());
         setMeta(null);
       } else setError("Case not found");
@@ -139,6 +157,7 @@ export default function App() {
     setHpNote("");
     setOtherNote("");
     setStructured(null);
+    setRevisedHpiBaseline("");
     setMeta(null);
     setEditedKeys(new Set());
     setError(null);
@@ -221,6 +240,7 @@ export default function App() {
             editedKeys={editedKeys}
             onFieldEdit={onFieldEdit}
             meta={meta}
+            revisedHpiBaseline={revisedHpiBaseline}
           />
         </section>
       </div>
