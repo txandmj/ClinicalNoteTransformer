@@ -122,18 +122,32 @@ npm run dev
 
 Open **http://localhost:5173** — Vite proxies `/generate`, `/cases`, `/guidelines`, and `/health` to port **8000**.
 
+### Docker
+
+From the repository root (where `Dockerfile` lives):
+
+**Build**
+
+```bash
+docker build -t clinical-note-transformer .
+```
+
+**Run**
+
+```bash
+docker run --rm -p 8000:8000 -e ANTHROPIC_API_KEY=sk-ant-api03-... clinical-note-transformer
+```
+
+Replace `sk-ant-api03-...` with your Anthropic API key. Open **http://localhost:8000/** (UI and API share that port).
+
 **Guideline content:** replace or extend files under `backend/app/guidelines/` and `registry.json` for your real MCG-style text.
 
 ---
 
 ## 7. Link to deployed application
 
-**Not deployed** in this repository. Add your production URL here after deployment, for example:
+`http://mjandtx.hopto.org:8199`
 
-- **App:** `https://your-app.example.com`  
-- **API:** `https://your-api.example.com`  
-
-Update CORS in `app/main.py` and any API base URLs for non-proxy production builds.
 
 ---
 
@@ -198,6 +212,9 @@ Exact chat transcripts were not archived. The **kinds** of Cursor-style prompts 
 - **Evaluation harness** — scripted runs against fixed Case A/B fixtures with rubric scoring (factuality, disposition alignment, uncertainty handling).  
 - **Stronger grounding** — retrieval over source chunks, citation spans, or a second-pass “self-check” pass that flags claims not supported by quoted spans.  
 - **Diff / versioning** — optional persisted **baseline revised HPI** per case for a stable “human edit” diff after save (if not already merged on your branch).  
+- **File upload** — import clinical notes from uploaded files (with size/type limits and clear errors), not only paste-in text.  
+- **Completion notifications** — signal when a generate job finishes (in-app toast, optional browser notification) so users are not tied to the tab while the model runs.  
+- **TXT export / download** — write structured output to a `.txt` file and offer a one-click download for archiving or sharing outside the app.  
 - **Tests** — pytest for API + prompt assembly; Vitest/RTL for critical UI paths.  
 - **Ops** — Docker Compose, CI, secret management, rate limiting, and structured logging.
 

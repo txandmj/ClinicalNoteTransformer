@@ -14,8 +14,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Root-only: a bare `lib/` ignores every `**/lib/` (e.g. frontend/src/lib).
+/lib/
+/lib64/
 parts/
 sdist/
 var/
