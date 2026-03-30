@@ -122,18 +122,32 @@ npm run dev
 
 Open **http://localhost:5173** — Vite proxies `/generate`, `/cases`, `/guidelines`, and `/health` to port **8000**.
 
+### Docker
+
+From the repository root (where `Dockerfile` lives):
+
+**Build**
+
+```bash
+docker build -t clinical-note-transformer .
+```
+
+**Run**
+
+```bash
+docker run --rm -p 8000:8000 -e ANTHROPIC_API_KEY=sk-ant-api03-... clinical-note-transformer
+```
+
+Replace `sk-ant-api03-...` with your Anthropic API key. Open **http://localhost:8000/** (UI and API share that port).
+
 **Guideline content:** replace or extend files under `backend/app/guidelines/` and `registry.json` for your real MCG-style text.
 
 ---
 
 ## 7. Link to deployed application
 
-**Not deployed** in this repository. Add your production URL here after deployment, for example:
+`http://mjandtx.hopto.org:8199`
 
-- **App:** `https://your-app.example.com`  
-- **API:** `https://your-api.example.com`  
-
-Update CORS in `app/main.py` and any API base URLs for non-proxy production builds.
 
 ---
 
