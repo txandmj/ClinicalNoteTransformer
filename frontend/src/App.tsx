@@ -23,6 +23,7 @@ export default function App() {
     prompt_version?: string;
     model?: string;
     usage?: TokenUsage | null;
+    from_cache?: boolean;
   } | null>(null);
   const [editedKeys, setEditedKeys] = useState<Set<string>>(new Set());
   /** Clean revised HPI snapshot for human-edit diff (generate / load / save). */
@@ -111,7 +112,12 @@ export default function App() {
       const normalized = normalizeStructured(res.structured);
       setStructured(normalized);
       setRevisedHpiBaseline(normalized.revised_hpi);
-      setMeta({ prompt_version: res.prompt_version, model: res.model, usage: res.usage });
+      setMeta({
+        prompt_version: res.prompt_version,
+        model: res.model,
+        usage: res.usage,
+        from_cache: res.from_cache === true,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

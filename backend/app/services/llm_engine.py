@@ -7,6 +7,10 @@ from typing import Any
 from anthropic import Anthropic
 from anthropic.types import TextBlock
 
+from app.generate_response_cache import (
+    generate_response_cache_fingerprint,
+    get_lru_generate_response_cache,
+)
 from app.core.config import Settings
 from app.deidentify import deidentify_note
 from app.prompts.config import PROMPT_VERSION
@@ -24,6 +28,47 @@ from app.services.cot_prompt_builder import (
     build_system_prompt,
     build_user_content_blocks,
 )
+
+# Rough input token budget when tiktoken is not used (~4 chars/token for English prose).
+_CHARS_PER_TOKEN_ESTIMATE = 4
+_TRUNC_MARKER = "\n…[truncated for length]"
+
+
+def _truncate_note_field(text: str, max_chars: int) -> str:
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    keep = max_chars - len(_TRUNC_MARKER)
+    if keep <= 0:
+        return text[:max_chars]
+    return text[:keep] + _TRUNC_MARKER
+
+
+def _optional_note(s: str) -> str | None:
+    return s if s.strip() else None
+
+
+def _lru_generate_response_cache_payload(
+    *,
+    er_note: str | None,
+    hp_note: str | None,
+    other_note: str,
+    guideline_merged: str | None,
+    reference_pattern_text: str | None,
+    exemplar_revised_hpi: str | None,
+    model: str,
+    anthropic_api_prompt_prefix_cache: bool,
+) -> dict[str, Any]:
+    return {
+        "er": er_note or "",
+        "hp": hp_note or "",
+        "other": other_note,
+        "guideline": (guideline_merged or "").strip(),
+        "reference": (reference_pattern_text or "").strip(),
+        "exemplar": (exemplar_revised_hpi or "").strip(),
+        "model": model,
+        "prompt_version": PROMPT_VERSION,
+        "anthropic_api_prompt_prefix_cache": anthropic_api_prompt_prefix_cache,
+    }
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:
@@ -99,15 +144,43 @@ def generate_structured(
     if not settings.anthropic_api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not configured")
 
-    client = Anthropic(api_key=settings.anthropic_api_key)
-    use_cache = settings.anthropic_prompt_cache
+    use_anthropic_prefix = settings.anthropic_api_prompt_prefix_cache
     system_text = build_system_prompt()
-    system_param = build_system_param(system_text, use_cache)
+    system_param = build_system_param(system_text, use_anthropic_prefix)
 
     # De-identify source note content before assembling model prompt blocks.
-    er_note = deidentify_note(req.er_note)
-    hp_note = deidentify_note(req.hp_note)
-    other_note = deidentify_note(req.note_text) or ""
+    er_raw = deidentify_note(req.er_note) or ""
+    hp_raw = deidentify_note(req.hp_note) or ""
+    other_raw = deidentify_note(req.note_text) or ""
+
+    # Layer 1 — cap each section (~N tokens via char heuristic).
+    max_chars = max(
+        256,
+        settings.generate_max_input_tokens_per_section * _CHARS_PER_TOKEN_ESTIMATE,
+    )
+    er_note = _optional_note(_truncate_note_field(er_raw, max_chars))
+    hp_note = _optional_note(_truncate_note_field(hp_raw, max_chars))
+    other_note = _truncate_note_field(other_raw, max_chars)
+
+    # Layer 2 — LRU full JSON response cache (no Anthropic API call on hit).
+    if settings.generate_response_cache_enabled and settings.generate_response_cache_max_entries > 0:
+        cache_payload = _lru_generate_response_cache_payload(
+            er_note=er_note,
+            hp_note=hp_note,
+            other_note=other_note,
+            guideline_merged=guideline_merged,
+            reference_pattern_text=req.reference_pattern_text,
+            exemplar_revised_hpi=req.exemplar_revised_hpi,
+            model=settings.anthropic_model,
+            anthropic_api_prompt_prefix_cache=use_anthropic_prefix,
+        )
+        cache_key = generate_response_cache_fingerprint(cache_payload)
+        cache = get_lru_generate_response_cache(settings.generate_response_cache_max_entries)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached.model_copy(update={"from_cache": True, "usage": None})
+
+    client = Anthropic(api_key=settings.anthropic_api_key)
 
     user_blocks = build_user_content_blocks(
         er_note,
@@ -116,7 +189,7 @@ def generate_structured(
         guideline_merged,
         req.reference_pattern_text,
         req.exemplar_revised_hpi,
-        use_cache,
+        use_anthropic_prefix,
     )
 
     message = client.messages.create(
@@ -144,10 +217,27 @@ def generate_structured(
             cache_creation_input_tokens=u.cache_creation_input_tokens,
         )
 
-    return GenerateResponse(
+    response = GenerateResponse(
         structured=structured,
         prompt_version=PROMPT_VERSION,
         model=settings.anthropic_model,
         raw_cot_trace=None,
         usage=usage,
+        from_cache=False,
     )
+
+    if settings.generate_response_cache_enabled and settings.generate_response_cache_max_entries > 0:
+        cache_payload = _lru_generate_response_cache_payload(
+            er_note=er_note,
+            hp_note=hp_note,
+            other_note=other_note,
+            guideline_merged=guideline_merged,
+            reference_pattern_text=req.reference_pattern_text,
+            exemplar_revised_hpi=req.exemplar_revised_hpi,
+            model=settings.anthropic_model,
+            anthropic_api_prompt_prefix_cache=use_anthropic_prefix,
+        )
+        cache_key = generate_response_cache_fingerprint(cache_payload)
+        get_lru_generate_response_cache(settings.generate_response_cache_max_entries).set(cache_key, response)
+
+    return response

@@ -51,6 +51,8 @@ export interface GenerateResponse {
   model: string;
   raw_cot_trace: string | null;
   usage: TokenUsage | null;
+  /** Served from backend in-memory cache (no Anthropic call) */
+  from_cache?: boolean;
 }
 
 export interface GuidelinePreset {

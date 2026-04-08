@@ -103,6 +103,7 @@ class GenerateResponse(BaseModel):
     model: str
     raw_cot_trace: str | None = Field(None, description="Optional chain-of-thought for debugging")
     usage: TokenUsage | None = None
+    from_cache: bool = Field(False, description="True when served from in-memory response cache (no LLM call)")
 
 
 class CaseCreate(BaseModel):

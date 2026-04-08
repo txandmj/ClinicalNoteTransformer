@@ -1,8 +1,9 @@
 from anthropic import AuthenticationError
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.config import Settings, get_settings
 from app.deps import verify_api_key
+from app.rate_limit import enforce_generate_rate_limit, get_generate_client_id
 from app.schemas import GenerateRequest, GenerateResponse
 from app.services.guideline_presets import GuidelinePresetError, merge_guideline_for_request
 from app.services.llm_engine import generate_structured
@@ -12,11 +13,16 @@ router = APIRouter(prefix="/generate", tags=["generate"])
 
 @router.post("", response_model=GenerateResponse)
 def post_generate(
+    request: Request,
     body: GenerateRequest,
     _: None = Depends(verify_api_key),
     settings: Settings = Depends(get_settings),
 ) -> GenerateResponse:
     try:
+        enforce_generate_rate_limit(
+            get_generate_client_id(request),
+            settings.generate_rate_limit_per_minute,
+        )
         merged = merge_guideline_for_request(body.guideline_key, body.guideline_text)
         return generate_structured(body, settings, merged)
     except GuidelinePresetError as e:

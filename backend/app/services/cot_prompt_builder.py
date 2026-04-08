@@ -12,8 +12,9 @@ def build_system_prompt() -> str:
     return f"[prompt_version={PROMPT_VERSION}]\n\n{base}"
 
 
-def build_system_param(system_text: str, use_prompt_cache: bool) -> str | list[dict[str, Any]]:
-    if use_prompt_cache:
+def build_system_param(system_text: str, use_anthropic_api_prompt_prefix_cache: bool) -> str | list[dict[str, Any]]:
+    """Anthropic vendor prompt-prefix cache (cache_control), not app generate_response_cache."""
+    if use_anthropic_api_prompt_prefix_cache:
         return [{"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}]
     return system_text
 
@@ -37,10 +38,10 @@ def build_user_content_blocks(
     guideline_merged: str | None,
     reference_pattern_text: str | None,
     exemplar_revised_hpi: str | None,
-    use_prompt_cache: bool,
+    use_anthropic_api_prompt_prefix_cache: bool,
 ) -> list[dict[str, Any]]:
     """
-    Order: static (cache-friendly) → dynamic patient notes.
+    Order: static (Anthropic cache_control-friendly) → dynamic patient notes.
 
     Static: guideline, reference rubric, human exemplar revised HPI (Case A teaching).
     Dynamic: labeled ER / H&P / other + JSON instruction.
@@ -51,7 +52,7 @@ def build_user_content_blocks(
             "type": "text",
             "text": "## Admission guideline (reference)\n" + guideline_merged.strip(),
         }
-        if use_prompt_cache:
+        if use_anthropic_api_prompt_prefix_cache:
             b["cache_control"] = {"type": "ephemeral"}
         blocks.append(b)
     if reference_pattern_text and reference_pattern_text.strip():
@@ -60,7 +61,7 @@ def build_user_content_blocks(
             "text": "## Reference transformation pattern (from exemplar case)\n"
             + reference_pattern_text.strip(),
         }
-        if use_prompt_cache:
+        if use_anthropic_api_prompt_prefix_cache:
             b["cache_control"] = {"type": "ephemeral"}
         blocks.append(b)
     if exemplar_revised_hpi and exemplar_revised_hpi.strip():
@@ -76,7 +77,7 @@ def build_user_content_blocks(
                 + exemplar_revised_hpi.strip()
             ),
         }
-        if use_prompt_cache:
+        if use_anthropic_api_prompt_prefix_cache:
             b["cache_control"] = {"type": "ephemeral"}
         blocks.append(b)
     closing = (

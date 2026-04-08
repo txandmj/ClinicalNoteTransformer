@@ -37,6 +37,6 @@ def get_health_audit(settings: Settings = Depends(get_settings)) -> dict:
         },
         "prompt": {
             "version": settings.prompt_version,
-            "anthropic_prompt_cache": settings.anthropic_prompt_cache,
+            "anthropic_api_prompt_prefix_cache": settings.anthropic_api_prompt_prefix_cache,
         },
     }

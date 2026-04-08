@@ -8,7 +8,12 @@ type Props = {
   onStructuredChange: (next: StructuredClinicalOutput) => void;
   editedKeys: Set<string>;
   onFieldEdit: (fieldKey: string) => void;
-  meta: { prompt_version?: string; model?: string; usage?: TokenUsage | null } | null;
+  meta: {
+    prompt_version?: string;
+    model?: string;
+    usage?: TokenUsage | null;
+    from_cache?: boolean;
+  } | null;
   revisedHpiBaseline: string;
 };
 
@@ -57,17 +62,21 @@ export function StructuredOutput({
         {meta && (
           <p style={{ margin: 0, fontSize: 13, color: "#6b7280", flex: "1 1 240px" }}>
             Model: {meta.model ?? "—"} · Prompt: {meta.prompt_version ?? "—"}
-            {meta.usage && (
-              <>
-                {" "}
-                · In: {meta.usage.input_tokens ?? "—"} · Out: {meta.usage.output_tokens ?? "—"}
-                {(meta.usage.cache_read_input_tokens ?? 0) > 0 && (
-                  <> · Cache read: {meta.usage.cache_read_input_tokens}</>
-                )}
-                {(meta.usage.cache_creation_input_tokens ?? 0) > 0 && (
-                  <> · Cache write: {meta.usage.cache_creation_input_tokens}</>
-                )}
-              </>
+            {meta.from_cache ? (
+              <> · Response: cached (no LLM call)</>
+            ) : (
+              meta.usage && (
+                <>
+                  {" "}
+                  · In: {meta.usage.input_tokens ?? "—"} · Out: {meta.usage.output_tokens ?? "—"}
+                  {(meta.usage.cache_read_input_tokens ?? 0) > 0 && (
+                    <> · Cache read: {meta.usage.cache_read_input_tokens}</>
+                  )}
+                  {(meta.usage.cache_creation_input_tokens ?? 0) > 0 && (
+                    <> · Cache write: {meta.usage.cache_creation_input_tokens}</>
+                  )}
+                </>
+              )
             )}
           </p>
         )}
