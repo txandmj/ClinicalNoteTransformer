@@ -10,6 +10,8 @@ export default defineConfig({
       "/cases": { target: "http://127.0.0.1:8000", changeOrigin: true },
       "/guidelines": { target: "http://127.0.0.1:8000", changeOrigin: true },
       "/health": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/privacy": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/export": { target: "http://127.0.0.1:8000", changeOrigin: true },
     },
   },
 });

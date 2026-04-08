@@ -137,6 +137,36 @@ class CaseListResponse(BaseModel):
     cases: list[CaseRecord]
 
 
+class DeidentifyPreviewRequest(BaseModel):
+    """Preview what will be sent to the model after de-identification."""
+
+    er_note: str | None = None
+    hp_note: str | None = None
+    note_text: str = ""
+
+    @model_validator(mode="after")
+    def require_some_clinical_source(self) -> Self:
+        chunks = [self.er_note or "", self.hp_note or "", self.note_text or ""]
+        if not any(c.strip() for c in chunks):
+            raise ValueError("Provide at least one of: er_note, hp_note, or note_text with content")
+        return self
+
+
+class DeidentifyPreviewResponse(BaseModel):
+    er_note: str | None = None
+    hp_note: str | None = None
+    note_text: str = ""
+    presidio_active: bool = False
+    note: str = Field(
+        default="",
+        description="Non-PHI hint about which de-id layers ran (for audit UI).",
+    )
+
+
+class FhirExportRequest(BaseModel):
+    structured: StructuredClinicalOutput
+
+
 # --- PostgreSQL swap: replace in-memory store with DB rows using these fields ---
 
 

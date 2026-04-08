@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.routes import cases, generate, guidelines
+from app.routes import cases, export, generate, guidelines, health, privacy
 
 app = FastAPI(title="Clinical Note Transformer API", version="0.1.0")
 
@@ -19,14 +19,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health.router)
 app.include_router(generate.router)
 app.include_router(cases.router)
 app.include_router(guidelines.router)
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+app.include_router(privacy.router)
+app.include_router(export.router)
 
 
 if _STATIC_DIR.is_dir():

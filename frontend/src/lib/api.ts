@@ -1,4 +1,10 @@
-import type { GenerateResponse, GuidelinePreset, SavedCase, StructuredClinicalOutput } from "../types";
+import type {
+  DeidentifyPreviewResponse,
+  GenerateResponse,
+  GuidelinePreset,
+  SavedCase,
+  StructuredClinicalOutput,
+} from "../types";
 
 export type GeneratePayload = {
   er_note: string | null;
@@ -52,6 +58,28 @@ export async function postGenerate(body: GeneratePayload): Promise<GenerateRespo
     body: JSON.stringify(body),
   });
   return handleJson<GenerateResponse>(res);
+}
+
+export async function postDeidentifyPreview(body: {
+  er_note: string | null;
+  hp_note: string | null;
+  note_text: string;
+}): Promise<DeidentifyPreviewResponse> {
+  const res = await fetch("/privacy/deidentify-preview", {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify(body),
+  });
+  return handleJson<DeidentifyPreviewResponse>(res);
+}
+
+export async function postExportFhir(structured: StructuredClinicalOutput): Promise<Record<string, unknown>> {
+  const res = await fetch("/export/fhir", {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify({ structured }),
+  });
+  return handleJson<Record<string, unknown>>(res);
 }
 
 export async function getGuidelines(): Promise<GuidelinePreset[]> {
