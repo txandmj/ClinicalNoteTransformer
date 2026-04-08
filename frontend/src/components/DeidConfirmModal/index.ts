@@ -1,0 +1,1 @@
+export { DeidConfirmModal } from "./DeidConfirmModal";

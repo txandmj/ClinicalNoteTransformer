@@ -8,6 +8,7 @@ from anthropic import Anthropic
 from anthropic.types import TextBlock
 
 from app.core.config import Settings
+from app.deidentify import deidentify_note
 from app.prompts.config import PROMPT_VERSION
 from app.schemas import (
     Disposition,
@@ -102,10 +103,16 @@ def generate_structured(
     use_cache = settings.anthropic_prompt_cache
     system_text = build_system_prompt()
     system_param = build_system_param(system_text, use_cache)
+
+    # De-identify source note content before assembling model prompt blocks.
+    er_note = deidentify_note(req.er_note)
+    hp_note = deidentify_note(req.hp_note)
+    other_note = deidentify_note(req.note_text) or ""
+
     user_blocks = build_user_content_blocks(
-        req.er_note,
-        req.hp_note,
-        req.note_text,
+        er_note,
+        hp_note,
+        other_note,
         guideline_merged,
         req.reference_pattern_text,
         req.exemplar_revised_hpi,

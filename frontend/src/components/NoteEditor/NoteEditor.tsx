@@ -9,7 +9,8 @@ type Props = {
   onHpNoteChange: (v: string) => void;
   otherNote: string;
   onOtherNoteChange: (v: string) => void;
-  onGenerate: () => void;
+  /** Opens de-id review, then parent runs generate after user confirms. */
+  onRequestGenerate: () => void;
   guidelinePresets: GuidelinePreset[];
   guidelineKey: string;
   onGuidelineKeyChange: (v: string) => void;
@@ -29,7 +30,7 @@ export function NoteEditor({
   onHpNoteChange,
   otherNote,
   onOtherNoteChange,
-  onGenerate,
+  onRequestGenerate,
   guidelinePresets,
   guidelineKey,
   onGuidelineKeyChange,
@@ -43,7 +44,7 @@ export function NoteEditor({
 }: Props) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onGenerate();
+    onRequestGenerate();
   }
 
   const canSubmit = hasAnyClinicalInput(erNote, hpNote, otherNote);

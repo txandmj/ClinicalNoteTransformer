@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CaseList } from "./components/CaseList";
+import { DeidConfirmModal } from "./components/DeidConfirmModal";
 import { NoteEditor } from "./components/NoteEditor";
 import { StructuredOutput } from "./components/StructuredOutput";
-import { getCase, getCases, getGuidelines, postCase, postGenerate } from "./lib/api";
+import { getCase, getCases, getGuidelines, postCase, postDeidentifyPreview, postGenerate } from "./lib/api";
 import * as local from "./lib/persistence";
 import { normalizeStructured } from "./lib/structuredDefaults";
 import { deserializeOriginalNote, serializeOriginalNote } from "./lib/originalNoteFormat";
-import type { GuidelinePreset, StructuredClinicalOutput, TokenUsage } from "./types";
+import type { DeidentifyPreviewResponse, GuidelinePreset, StructuredClinicalOutput, TokenUsage } from "./types";
 
 export default function App() {
   const [erNote, setErNote] = useState("");
@@ -28,6 +29,12 @@ export default function App() {
   const [revisedHpiBaseline, setRevisedHpiBaseline] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [deidOpen, setDeidOpen] = useState(false);
+  const [deidLoading, setDeidLoading] = useState(false);
+  const [deidPreview, setDeidPreview] = useState<DeidentifyPreviewResponse | null>(null);
+  const [deidAcknowledged, setDeidAcknowledged] = useState(false);
+  const [deidError, setDeidError] = useState<string | null>(null);
 
   const [caseId, setCaseId] = useState<string | null>(null);
   const [localCases, setLocalCases] = useState(() => local.listLocalCases());
@@ -64,7 +71,30 @@ export default function App() {
     setEditedKeys((prev) => new Set(prev).add(key));
   }, []);
 
-  const handleGenerate = async () => {
+  const startDeidReview = async () => {
+    setError(null);
+    setDeidError(null);
+    setDeidOpen(true);
+    setDeidLoading(true);
+    setDeidPreview(null);
+    setDeidAcknowledged(false);
+    try {
+      const prev = await postDeidentifyPreview({
+        er_note: erNote.trim() || null,
+        hp_note: hpNote.trim() || null,
+        note_text: otherNote.trim() || "",
+      });
+      setDeidPreview(prev);
+    } catch (e) {
+      setDeidError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeidLoading(false);
+    }
+  };
+
+  const runGenerateAfterDeidConfirm = async () => {
+    if (!deidAcknowledged) return;
+    setDeidOpen(false);
     setError(null);
     setBusy(true);
     setEditedKeys(new Set());
@@ -205,7 +235,7 @@ export default function App() {
             onHpNoteChange={setHpNote}
             otherNote={otherNote}
             onOtherNoteChange={setOtherNote}
-            onGenerate={handleGenerate}
+            onRequestGenerate={startDeidReview}
             guidelinePresets={guidelinePresets}
             guidelineKey={guidelineKey}
             onGuidelineKeyChange={setGuidelineKey}
@@ -215,7 +245,7 @@ export default function App() {
             onReferencePatternChange={setReferencePattern}
             exemplarRevisedHpi={exemplarRevisedHpi}
             onExemplarRevisedHpiChange={setExemplarRevisedHpi}
-            busy={busy}
+            busy={busy || deidLoading}
           />
         </section>
 
@@ -249,6 +279,23 @@ export default function App() {
         <h2 style={{ fontSize: 16, marginBottom: 12 }}>Saved cases</h2>
         <CaseList cases={listItems} selectedId={caseId} onSelect={(id) => void loadCase(id)} />
       </section>
+
+      <DeidConfirmModal
+        open={deidOpen}
+        loading={deidLoading}
+        error={deidError}
+        preview={deidPreview}
+        acknowledged={deidAcknowledged}
+        onAcknowledgedChange={setDeidAcknowledged}
+        onCancel={() => {
+          if (!busy) {
+            setDeidOpen(false);
+            setDeidError(null);
+          }
+        }}
+        onConfirm={() => void runGenerateAfterDeidConfirm()}
+        generateBusy={busy}
+      />
     </div>
   );
 }

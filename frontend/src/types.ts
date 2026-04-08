@@ -57,3 +57,11 @@ export interface GuidelinePreset {
   id: string;
   title: string;
 }
+
+export interface DeidentifyPreviewResponse {
+  er_note: string | null;
+  hp_note: string | null;
+  note_text: string;
+  presidio_active: boolean;
+  note: string;
+}
